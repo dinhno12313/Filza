@@ -1,4 +1,4 @@
-package dinhnguyen.filza.file.filzafilemanager;
+package dinhnguyen.filza.file.manager;
 
 import org.junit.Test;
 
