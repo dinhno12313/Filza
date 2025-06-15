@@ -1,7 +1,10 @@
 package dinhnguyen.filza.file.manager.ui;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View;
@@ -15,6 +18,8 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -41,8 +46,11 @@ import dinhnguyen.filza.file.manager.ui.viewmodel.FileBrowserViewModel;
 import dinhnguyen.filza.file.manager.viewmodel.FileBrowserViewModelFactory;
 import dinhnguyen.filza.file.manager.constants.FileConstants;
 import dinhnguyen.filza.file.manager.ui.dialog.ControlCenterBottomSheet;
+import dinhnguyen.filza.file.manager.utils.PermissionManager;
 
 public class FileBrowserActivity extends AppCompatActivity implements FileOperationHandler.Refreshable {
+    
+    private static final int PERMISSION_REQUEST_CODE = 1001;
     
     private Toolbar toolbar;
     private ImageButton btnBack;
@@ -76,6 +84,13 @@ public class FileBrowserActivity extends AppCompatActivity implements FileOperat
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_file_browser);
         
+        // Check permissions before initializing
+        if (checkAndRequestPermissions()) {
+            initializeApp();
+        }
+    }
+    
+    private void initializeApp() {
         initializeManagers();
         initializeViewModel();
         initializeViews();
@@ -85,6 +100,77 @@ public class FileBrowserActivity extends AppCompatActivity implements FileOperat
         setupClickListeners();
         
         loadInitialDirectory();
+    }
+    
+    private boolean checkAndRequestPermissions() {
+        if (PermissionManager.hasRequiredPermissions(this)) {
+            return true;
+        }
+        
+        String[] deniedPermissions = PermissionManager.getDeniedPermissions(this);
+        if (deniedPermissions.length > 0) {
+            ActivityCompat.requestPermissions(this, deniedPermissions, PERMISSION_REQUEST_CODE);
+            return false;
+        }
+        
+        return true;
+    }
+    
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            boolean allGranted = true;
+            
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
+                }
+            }
+            
+            if (allGranted) {
+                // Permissions granted, initialize the app
+                initializeApp();
+            } else {
+                // Check if any permission was permanently denied
+                boolean permanentlyDenied = false;
+                for (String permission : permissions) {
+                    if (!shouldShowRequestPermissionRationale(permission)) {
+                        permanentlyDenied = true;
+                        break;
+                    }
+                }
+                
+                if (permanentlyDenied) {
+                    showPermissionSettingsDialog();
+                } else {
+                    Toast.makeText(this, "Cần quyền truy cập để sử dụng ứng dụng", Toast.LENGTH_LONG).show();
+                    finish();
+                }
+            }
+        }
+    }
+    
+    private void showPermissionSettingsDialog() {
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Quyền truy cập bị từ chối")
+            .setMessage("Ứng dụng cần quyền truy cập để hoạt động. Vui lòng cấp quyền trong Cài đặt.")
+            .setPositiveButton("Mở Cài đặt", (dialog, which) -> {
+                openAppSettings();
+            })
+            .setNegativeButton("Thoát", (dialog, which) -> {
+                finish();
+            })
+            .setCancelable(false)
+            .show();
+    }
+    
+    private void openAppSettings() {
+        Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+        intent.setData(android.net.Uri.fromParts("package", getPackageName(), null));
+        startActivity(intent);
     }
 
     private void initializeManagers() {
