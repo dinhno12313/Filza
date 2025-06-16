@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_fit_to_screen"
+        android:icon="@android:drawable/ic_menu_view"
+        android:title="@string/fit_to_screen"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_export_all"
+        android:icon="@android:drawable/ic_menu_save"
+        android:title="@string/export_all_pages"
+        app:showAsAction="never" />
+
+</menu> 

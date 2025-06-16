@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Text Styles -->
+    <style name="TextAppearance.FilzaFileManager.Headline" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    
+    <style name="TextAppearance.FilzaFileManager.Title" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+    
+    <style name="TextAppearance.FilzaFileManager.Body" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+    
+    <style name="TextAppearance.FilzaFileManager.Caption" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+    </style>
+    
+    <!-- Button Styles -->
+    <style name="Widget.FilzaFileManager.Button" parent="Widget.Material3.Button">
+        <item name="android:textColor">?attr/colorOnPrimary</item>
+        <item name="backgroundTint">?attr/colorPrimary</item>
+    </style>
+    
+    <style name="Widget.FilzaFileManager.Button.Secondary" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:textColor">?attr/colorPrimary</item>
+        <item name="strokeColor">?attr/colorPrimary</item>
+    </style>
+    
+    <!-- Card Styles -->
+    <style name="Widget.FilzaFileManager.Card" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardBackgroundColor">?attr/colorSurface</item>
+        <item name="cardElevation">4dp</item>
+        <item name="cardCornerRadius">8dp</item>
+    </style>
+    
+    <!-- Toolbar Styles -->
+    <style name="Widget.FilzaFileManager.Toolbar" parent="Widget.Material3.Toolbar">
+        <item name="android:background">?attr/colorPrimary</item>
+        <item name="titleTextColor">?attr/colorOnPrimary</item>
+        <item name="subtitleTextColor">?attr/colorOnPrimary</item>
+    </style>
+    
+    <!-- SeekBar Styles -->
+    <style name="Widget.FilzaFileManager.SeekBar" parent="Widget.Material3.Slider">
+        <item name="thumbColor">?attr/colorPrimary</item>
+        <item name="trackColorActive">?attr/colorPrimary</item>
+        <item name="trackColorInactive">?attr/colorSurfaceVariant</item>
+    </style>
+    
+    <!-- FloatingActionButton Styles -->
+    <style name="Widget.FilzaFileManager.FloatingActionButton" parent="Widget.Material3.FloatingActionButton.Primary">
+        <item name="backgroundTint">?attr/colorPrimary</item>
+        <item name="tint">?attr/colorOnPrimary</item>
+    </style>
+    
+    <!-- Dialog Styles -->
+    <style name="Theme.FilzaFileManager.Dialog" parent="ThemeOverlay.Material3.Dialog.Alert">
+        <item name="colorPrimary">?attr/colorPrimary</item>
+        <item name="colorSurface">?attr/colorSurface</item>
+        <item name="colorOnSurface">?attr/colorOnSurface</item>
+    </style>
+</resources> 

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_fullscreen"
+        android:src="@drawable/custom_icon_fullscreen"
+        android:title="@string/toggle_fullscreen"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_pip"
+        android:icon="@android:drawable/ic_menu_view"
+        android:title="@string/picture_in_picture"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_reset_position"
+        android:icon="@android:drawable/ic_menu_revert"
+        android:title="@string/reset_video_position"
+        app:showAsAction="never" />
+
+</menu> 

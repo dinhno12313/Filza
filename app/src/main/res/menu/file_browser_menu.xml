@@ -1,0 +1,20 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_select"
+        android:title="Select" />
+    <item
+        android:id="@+id/action_view_mode_grid"
+        android:title="View as Grid" />
+    <item
+        android:id="@+id/action_view_mode_list"
+        android:title="View as List" />
+    <item
+        android:id="@+id/action_sort_by_name"
+        android:title="Sort by Name" />
+    <item
+        android:id="@+id/action_sort_by_date"
+        android:title="Sort by Date" />
+    <item
+        android:id="@+id/action_sort_by_size"
+        android:title="Sort by Size" />
+</menu>
