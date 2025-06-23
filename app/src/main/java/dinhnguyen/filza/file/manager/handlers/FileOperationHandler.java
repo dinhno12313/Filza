@@ -9,11 +9,17 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import java.io.File;
 import dinhnguyen.filza.file.manager.R;
+import dinhnguyen.filza.file.manager.ui.dialog.FolderPickerDialog;
+import dinhnguyen.filza.file.manager.utils.PermissionManager;
+import java.util.Collection;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 public class FileOperationHandler implements FileActionListener {
 
     private final Context context;
     private final Refreshable reloader;
+    private File currentDirectory;
 
     public interface Refreshable {
         void refresh();
@@ -22,6 +28,10 @@ public class FileOperationHandler implements FileActionListener {
     public FileOperationHandler(Context context, Refreshable reloader) {
         this.context = context;
         this.reloader = reloader;
+    }
+    
+    public void setCurrentDirectory(File currentDirectory) {
+        this.currentDirectory = currentDirectory;
     }
 
     @Override
@@ -60,13 +70,67 @@ public class FileOperationHandler implements FileActionListener {
 
     @Override
     public void onMove(File file) {
-        // TODO: Show a folder picker dialog to let the user select the destination directory.
-        // For now, move to Downloads as a placeholder.
-        File downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
-        File destFile = new File(downloadsDir, file.getName());
-
-        if (file.renameTo(destFile)) {
-            Toast.makeText(context, "Moved to Downloads", Toast.LENGTH_SHORT).show();
+        if (currentDirectory == null) {
+            Toast.makeText(context, "Current directory not set", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Check permissions first
+        if (!PermissionManager.hasFileAccessPermissions(context)) {
+            Toast.makeText(context, "File access permission required", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        FolderPickerDialog folderPicker = new FolderPickerDialog(context, currentDirectory, 
+                new FolderPickerDialog.FolderPickerCallback() {
+                    @Override
+                    public void onFolderSelected(File selectedFolder) {
+                        performMove(file, selectedFolder);
+                    }
+                    
+                    @Override
+                    public void onCancelled() {
+                        // User cancelled the operation
+                    }
+                });
+        folderPicker.show();
+    }
+    
+    private void performMove(File sourceFile, File destinationFolder) {
+        if (!destinationFolder.exists() || !destinationFolder.isDirectory()) {
+            Toast.makeText(context, "Invalid destination folder", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        if (!PermissionManager.canAccessDirectory(context, destinationFolder.getAbsolutePath())) {
+            Toast.makeText(context, "Cannot access destination folder", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        File destFile = new File(destinationFolder, sourceFile.getName());
+        
+        // Check if destination file already exists
+        if (destFile.exists()) {
+            new AlertDialog.Builder(context)
+                    .setTitle("File Exists")
+                    .setMessage("A file with this name already exists in the destination. Do you want to replace it?")
+                    .setPositiveButton("Replace", (dialog, which) -> {
+                        if (destFile.delete()) {
+                            executeMove(sourceFile, destFile);
+                        } else {
+                            Toast.makeText(context, "Cannot replace existing file", Toast.LENGTH_SHORT).show();
+                        }
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        } else {
+            executeMove(sourceFile, destFile);
+        }
+    }
+    
+    private void executeMove(File sourceFile, File destFile) {
+        if (sourceFile.renameTo(destFile)) {
+            Toast.makeText(context, "Moved to " + destFile.getParentFile().getName(), Toast.LENGTH_SHORT).show();
             reloader.refresh();
         } else {
             Toast.makeText(context, "Failed to move file", Toast.LENGTH_SHORT).show();
@@ -75,18 +139,72 @@ public class FileOperationHandler implements FileActionListener {
 
     @Override
     public void onCopy(File file) {
-        // TODO: Show a folder picker dialog to let the user select the destination directory.
-        // For now, copy to Downloads as a placeholder.
-        File downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
-        File destFile = new File(downloadsDir, file.getName());
-
+        if (currentDirectory == null) {
+            Toast.makeText(context, "Current directory not set", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Check permissions first
+        if (!PermissionManager.hasFileAccessPermissions(context)) {
+            Toast.makeText(context, "File access permission required", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        FolderPickerDialog folderPicker = new FolderPickerDialog(context, currentDirectory, 
+                new FolderPickerDialog.FolderPickerCallback() {
+                    @Override
+                    public void onFolderSelected(File selectedFolder) {
+                        performCopy(file, selectedFolder);
+                    }
+                    
+                    @Override
+                    public void onCancelled() {
+                        // User cancelled the operation
+                    }
+                });
+        folderPicker.show();
+    }
+    
+    private void performCopy(File sourceFile, File destinationFolder) {
+        if (!destinationFolder.exists() || !destinationFolder.isDirectory()) {
+            Toast.makeText(context, "Invalid destination folder", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        if (!PermissionManager.canAccessDirectory(context, destinationFolder.getAbsolutePath())) {
+            Toast.makeText(context, "Cannot access destination folder", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        File destFile = new File(destinationFolder, sourceFile.getName());
+        
+        // Check if destination file already exists
+        if (destFile.exists()) {
+            new AlertDialog.Builder(context)
+                    .setTitle("File Exists")
+                    .setMessage("A file with this name already exists in the destination. Do you want to replace it?")
+                    .setPositiveButton("Replace", (dialog, which) -> {
+                        if (destFile.delete() || destFile.isDirectory()) {
+                            executeCopy(sourceFile, destFile);
+                        } else {
+                            Toast.makeText(context, "Cannot replace existing file", Toast.LENGTH_SHORT).show();
+                        }
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        } else {
+            executeCopy(sourceFile, destFile);
+        }
+    }
+    
+    private void executeCopy(File sourceFile, File destFile) {
         try {
-            if (file.isDirectory()) {
-                copyDirectory(file, destFile);
+            if (sourceFile.isDirectory()) {
+                copyDirectory(sourceFile, destFile);
             } else {
-                copyFile(file, destFile);
+                copyFile(sourceFile, destFile);
             }
-            Toast.makeText(context, "Copied to Downloads", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "Copied to " + destFile.getParentFile().getName(), Toast.LENGTH_SHORT).show();
             reloader.refresh();
         } catch (Exception e) {
             Toast.makeText(context, "Failed to copy: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -295,5 +413,42 @@ public class FileOperationHandler implements FileActionListener {
             }
         }
         return fileOrDirectory.delete();
+    }
+
+    /**
+     * Nén nhiều file/thư mục vào 1 file zip duy nhất
+     */
+    public void zipMultipleFiles(Collection<File> files, File zipFile, Runnable onSuccess, Runnable onError) {
+        try (ZipOutputStream zos = new ZipOutputStream(new java.io.FileOutputStream(zipFile))) {
+            for (File file : files) {
+                addFileToZip(file, file.getName(), zos);
+            }
+            if (onSuccess != null) onSuccess.run();
+        } catch (Exception e) {
+            Toast.makeText(context, "Failed to zip: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            if (onError != null) onError.run();
+        }
+    }
+
+    private void addFileToZip(File file, String entryName, ZipOutputStream zos) throws java.io.IOException {
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    addFileToZip(child, entryName + "/" + child.getName(), zos);
+                }
+            }
+        } else {
+            ZipEntry zipEntry = new ZipEntry(entryName);
+            zos.putNextEntry(zipEntry);
+            try (java.io.FileInputStream fis = new java.io.FileInputStream(file)) {
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = fis.read(buffer)) > 0) {
+                    zos.write(buffer, 0, length);
+                }
+            }
+            zos.closeEntry();
+        }
     }
 } 
