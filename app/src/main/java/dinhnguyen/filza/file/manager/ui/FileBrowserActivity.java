@@ -15,8 +15,6 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -43,11 +41,8 @@ import dinhnguyen.filza.file.manager.ui.viewmodel.FileBrowserViewModel;
 import dinhnguyen.filza.file.manager.viewmodel.FileBrowserViewModelFactory;
 import dinhnguyen.filza.file.manager.constants.FileConstants;
 import dinhnguyen.filza.file.manager.ui.dialog.ControlCenterBottomSheet;
-import dinhnguyen.filza.file.manager.utils.PermissionManager;
 
 public class FileBrowserActivity extends AppCompatActivity implements FileOperationHandler.Refreshable {
-    
-    private static final int PERMISSION_REQUEST_CODE = 1001;
     
     private Toolbar toolbar;
     private ImageButton btnBack;
@@ -80,7 +75,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileOperat
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_file_browser);
-
+        
         initializeManagers();
         initializeViewModel();
         initializeViews();
@@ -88,65 +83,8 @@ public class FileBrowserActivity extends AppCompatActivity implements FileOperat
         setupRecyclerView();
         setupObservers();
         setupClickListeners();
-
-        // Đảm bảo viewModel đã được khởi tạo trước khi kiểm tra quyền
-        checkAndRequestPermissions();
-    }
-    
-    private void checkAndRequestPermissions() {
-        if (!PermissionManager.hasFileAccessPermissions(this)) {
-            if (PermissionManager.shouldShowPermissionRationale(this)) {
-                showPermissionRationaleDialog();
-            } else {
-                requestPermissions();
-            }
-        } else {
-            loadInitialDirectory();
-        }
-    }
-    
-    private void showPermissionRationaleDialog() {
-        new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Permission Required")
-                .setMessage("This app needs file access permission to browse and manage files on your device.")
-                .setPositiveButton("Grant Permission", (dialog, which) -> requestPermissions())
-                .setNegativeButton("Cancel", (dialog, which) -> showPermissionDeniedMessage())
-                .setCancelable(false)
-                .show();
-    }
-    
-    private void requestPermissions() {
-        String[] permissions = PermissionManager.getRequiredPermissions();
-        ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQUEST_CODE);
-    }
-    
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         
-        if (requestCode == PERMISSION_REQUEST_CODE) {
-            boolean allGranted = true;
-            for (int result : grantResults) {
-                if (result != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    allGranted = false;
-                    break;
-                }
-            }
-            
-            if (allGranted) {
-                loadInitialDirectory();
-            } else {
-                showPermissionDeniedMessage();
-            }
-        }
-    }
-    
-    private void showPermissionDeniedMessage() {
-        Toast.makeText(this, 
-                "File access permission is required to use this app", 
-                Toast.LENGTH_LONG).show();
-        // You might want to show a dialog explaining why permissions are needed
-        // and guide users to settings if they denied permanently
+        loadInitialDirectory();
     }
 
     private void initializeManagers() {
@@ -237,7 +175,6 @@ public class FileBrowserActivity extends AppCompatActivity implements FileOperat
         
         viewModel.getCurrentDirectory().observe(this, directory -> {
             updateToolbarTitle(directory);
-            fileOperationHandler.setCurrentDirectory(directory);
         });
     }
 
@@ -262,13 +199,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileOperat
             initialDirectory = getExternalFilesDir(null);
         }
         
-        // Check if we can access the directory
-        if (PermissionManager.canAccessDirectory(this, initialDirectory.getAbsolutePath())) {
-            viewModel.loadDirectory(initialDirectory);
-        } else {
-            // Fallback to app's private directory
-            viewModel.loadDirectory(getExternalFilesDir(null));
-        }
+        viewModel.loadDirectory(initialDirectory);
     }
 
     private void onFileClicked(File file) {
@@ -318,16 +249,9 @@ public class FileBrowserActivity extends AppCompatActivity implements FileOperat
         if (isMultiSelectMode) {
             btnLeft.setText("Cancel");
             btnMenu.setText(selectedCount > 0 ? "Actions (" + selectedCount + ")" : "Actions");
-            btnMenu.setOnClickListener(v -> showMultiSelectActionsMenu(btnMenu));
         } else {
             btnLeft.setText("Left");
             btnMenu.setText("Menu");
-            btnMenu.setOnClickListener(v -> {
-                PopupMenu popupMenu = new PopupMenu(this, btnMenu);
-                popupMenu.getMenuInflater().inflate(R.menu.file_browser_menu, popupMenu.getMenu());
-                popupMenu.setOnMenuItemClickListener(this::onMenuItemClick);
-                popupMenu.show();
-            });
         }
     }
     
@@ -415,121 +339,6 @@ public class FileBrowserActivity extends AppCompatActivity implements FileOperat
         if (currentDirectory != null) {
             viewModel.loadDirectory(currentDirectory);
         }
-    }
-
-    private void showMultiSelectActionsMenu(View anchor) {
-        PopupMenu popupMenu = new PopupMenu(this, anchor);
-        popupMenu.getMenuInflater().inflate(R.menu.multiselect_actions_menu, popupMenu.getMenu());
-        popupMenu.setOnMenuItemClickListener(item -> {
-            Set<File> selectedFiles = fileAdapter.getSelectedFiles();
-            if (selectedFiles.isEmpty()) {
-                Toast.makeText(this, "No files selected", Toast.LENGTH_SHORT).show();
-                return true;
-            }
-            int id = item.getItemId();
-            if (id == R.id.action_multi_zip) {
-                batchZipFiles(selectedFiles);
-                return true;
-            } else if (id == R.id.action_multi_move) {
-                batchMoveFiles(selectedFiles);
-                return true;
-            } else if (id == R.id.action_multi_copy) {
-                batchCopyFiles(selectedFiles);
-                return true;
-            } else if (id == R.id.action_multi_duplicate) {
-                batchDuplicateFiles(selectedFiles);
-                return true;
-            } else if (id == R.id.action_multi_delete) {
-                batchDeleteFiles(selectedFiles);
-                return true;
-            }
-            return false;
-        });
-        popupMenu.show();
-    }
-
-    private void batchZipFiles(Set<File> files) {
-        if (files == null || files.isEmpty()) return;
-        // Hỏi tên file zip
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-        builder.setTitle("Zip Files");
-        final android.widget.EditText input = new android.widget.EditText(this);
-        input.setHint("Enter zip file name");
-        input.setText("archive.zip");
-        builder.setView(input);
-        builder.setPositiveButton("OK", (dialog, which) -> {
-            String zipName = input.getText().toString().trim();
-            if (!zipName.endsWith(".zip")) zipName += ".zip";
-            File destDir = fileAdapter.getSelectedFiles().iterator().next().getParentFile();
-            File zipFile = new File(destDir, zipName);
-            fileOperationHandler.zipMultipleFiles(files, zipFile,
-                () -> runOnUiThread(() -> {
-                    Toast.makeText(this, "Zipped to " + zipFile.getName(), Toast.LENGTH_SHORT).show();
-                    exitMultiSelectMode();
-                    loadInitialDirectory();
-                }),
-                () -> runOnUiThread(() -> exitMultiSelectMode())
-            );
-        });
-        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
-        builder.show();
-    }
-
-    private void batchDeleteFiles(Set<File> files) {
-        if (files == null || files.isEmpty()) return;
-        new androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("Delete Files")
-            .setMessage("Are you sure you want to delete all selected files and folders?")
-            .setPositiveButton("Delete", (dialog, which) -> {
-                for (File file : files) {
-                    fileOperationHandler.onDelete(file);
-                }
-                exitMultiSelectMode();
-                loadInitialDirectory();
-            })
-            .setNegativeButton("Cancel", null)
-            .show();
-    }
-
-    private void batchMoveFiles(Set<File> files) {
-        if (files.isEmpty()) return;
-        File anyFile = files.iterator().next();
-        new dinhnguyen.filza.file.manager.ui.dialog.FolderPickerDialog(this, anyFile.getParentFile(), new dinhnguyen.filza.file.manager.ui.dialog.FolderPickerDialog.FolderPickerCallback() {
-            @Override
-            public void onFolderSelected(File destFolder) {
-                for (File file : files) {
-                    fileOperationHandler.onMove(file);
-                }
-                exitMultiSelectMode();
-                loadInitialDirectory();
-            }
-            @Override
-            public void onCancelled() {}
-        }).show();
-    }
-
-    private void batchCopyFiles(Set<File> files) {
-        if (files.isEmpty()) return;
-        File anyFile = files.iterator().next();
-        new dinhnguyen.filza.file.manager.ui.dialog.FolderPickerDialog(this, anyFile.getParentFile(), new dinhnguyen.filza.file.manager.ui.dialog.FolderPickerDialog.FolderPickerCallback() {
-            @Override
-            public void onFolderSelected(File destFolder) {
-                for (File file : files) {
-                    fileOperationHandler.onCopy(file);
-                }
-                exitMultiSelectMode();
-                loadInitialDirectory();
-            }
-            @Override
-            public void onCancelled() {}
-        }).show();
-    }
-
-    private void batchDuplicateFiles(Set<File> files) {
-        for (File file : files) {
-            fileOperationHandler.onDuplicate(file);
-        }
-        exitMultiSelectMode();
     }
 }
 
