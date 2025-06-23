@@ -169,7 +169,7 @@
 <!-- Thêm thông tin thành viên nhóm vào đây -->
 - **Trưởng nhóm**: [Nguyễn Quang Định] - [2251061741]
 - **Thành viên 1**: [Phạm Đức Đô] - [2251061742]
-- **Thành viên 2**: [Nguyễn Trung Kiên] - [2251061765]
+- **Thành viên 2**: [Bùi Trung Kiên] - [2251061810]
 
 
 ## 📄 Bản quyền
