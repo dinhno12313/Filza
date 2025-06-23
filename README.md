@@ -6,7 +6,7 @@
 
 ### 🎯 Mục tiêu dự án
 
-- Xây dựng ứng dụng quản lý tệp hoàn chỉnh với giao diện Material Design 3
+- Xây dựng ứng dụng quản lý tệp hoàn chỉnh với giao diện Material Design 3v
 - Hỗ trợ xem và chỉnh sửa nhiều loại tệp (hình ảnh, video, âm thanh, PDF, văn bản)
 - Tích hợp Google Drive để đồng bộ hóa và sao lưu dữ liệu
 - Cung cấp trải nghiệm người dùng mượt mà và trực quan

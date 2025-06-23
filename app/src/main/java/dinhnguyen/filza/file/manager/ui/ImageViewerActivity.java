@@ -346,6 +346,7 @@ public class ImageViewerActivity extends AppCompatActivity implements ColorPicke
     public void onBackPressed() {
         // Check if there are unsaved changes
         // For now, just finish the activity
+        super.onBackPressed();
         finish();
     }
 } 

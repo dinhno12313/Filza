@@ -213,6 +213,7 @@ public class MusicPlayerActivity extends AppCompatActivity implements ProgressUp
         if (viewModel.getIsPlaying().getValue() != null && viewModel.getIsPlaying().getValue()) {
             viewModel.togglePlayPause();
         }
+        super.onBackPressed();
         finish();
     }
 } 

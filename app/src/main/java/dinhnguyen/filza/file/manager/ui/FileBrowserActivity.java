@@ -27,12 +27,14 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.ArrayList;
 
 import dinhnguyen.filza.file.manager.R;
 import dinhnguyen.filza.file.manager.ui.adapter.FileAdapter;
 import dinhnguyen.filza.file.manager.handlers.FileHandler;
 import dinhnguyen.filza.file.manager.handlers.FileOperationHandler;
 import dinhnguyen.filza.file.manager.handlers.ImageFileHandler;
+import dinhnguyen.filza.file.manager.manager.BulkOperationsManager;
 import dinhnguyen.filza.file.manager.manager.DirectoryManager;
 import dinhnguyen.filza.file.manager.manager.FileImportManager;
 import dinhnguyen.filza.file.manager.manager.FileOpenManager;
@@ -41,6 +43,9 @@ import dinhnguyen.filza.file.manager.ui.viewmodel.FileBrowserViewModel;
 import dinhnguyen.filza.file.manager.viewmodel.FileBrowserViewModelFactory;
 import dinhnguyen.filza.file.manager.constants.FileConstants;
 import dinhnguyen.filza.file.manager.ui.dialog.ControlCenterBottomSheet;
+import android.app.AlertDialog;
+import android.widget.ArrayAdapter;
+import dinhnguyen.filza.file.manager.ui.dialog.FolderPickerDialog;
 
 public class FileBrowserActivity extends AppCompatActivity implements FileOperationHandler.Refreshable {
     
@@ -53,11 +58,13 @@ public class FileBrowserActivity extends AppCompatActivity implements FileOperat
     private FileBrowserViewModel viewModel;
     private DialogManager dialogManager;
     private FileOperationHandler fileOperationHandler;
+    private BulkOperationsManager bulkOperationsManager;
     
     // Multi-select state
     private boolean isMultiSelectMode = false;
     private MaterialButton btnMenu;
     private MaterialButton btnLeft;
+    private Set<File> selectedFiles;
 
     private final ActivityResultLauncher<Intent> importFileLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -90,6 +97,14 @@ public class FileBrowserActivity extends AppCompatActivity implements FileOperat
     private void initializeManagers() {
         dialogManager = new DialogManager(this);
         fileOperationHandler = new FileOperationHandler(this, this);
+        bulkOperationsManager = new BulkOperationsManager(this, this);
+        
+        fileOperationHandler.setDestinationFolderPicker(new FileOperationHandler.DestinationFolderPicker() {
+            @Override
+            public void pickDestination(File source, DestinationCallback callback) {
+                showFolderPickerDialog(callback);
+            }
+        });
     }
 
     private void initializeViewModel() {
@@ -124,10 +139,16 @@ public class FileBrowserActivity extends AppCompatActivity implements FileOperat
 
     private void setupMenuButton(MaterialButton btnMenu) {
         btnMenu.setOnClickListener(v -> {
-            PopupMenu popupMenu = new PopupMenu(this, btnMenu);
-            popupMenu.getMenuInflater().inflate(R.menu.file_browser_menu, popupMenu.getMenu());
-            popupMenu.setOnMenuItemClickListener(this::onMenuItemClick);
-            popupMenu.show();
+            if (isMultiSelectMode && selectedFiles != null && !selectedFiles.isEmpty()) {
+                // Show bulk operations menu
+                showBulkOperationsMenu();
+            } else {
+                // Show regular menu
+                PopupMenu popupMenu = new PopupMenu(this, btnMenu);
+                popupMenu.getMenuInflater().inflate(R.menu.file_browser_menu, popupMenu.getMenu());
+                popupMenu.setOnMenuItemClickListener(this::onMenuItemClick);
+                popupMenu.show();
+            }
         });
     }
 
@@ -217,6 +238,11 @@ public class FileBrowserActivity extends AppCompatActivity implements FileOperat
     
     private void onMultiSelectChanged(int selectedCount) {
         updateMultiSelectUI(selectedCount);
+        
+        // Update selected files list
+        if (isMultiSelectMode) {
+            selectedFiles = fileAdapter.getSelectedFiles();
+        }
     }
 
     private void showCreateFolderDialog() {
@@ -248,16 +274,24 @@ public class FileBrowserActivity extends AppCompatActivity implements FileOperat
     private void updateMultiSelectUI(int selectedCount) {
         if (isMultiSelectMode) {
             btnLeft.setText("Cancel");
-            btnMenu.setText(selectedCount > 0 ? "Actions (" + selectedCount + ")" : "Actions");
+            if (selectedCount > 0) {
+                btnMenu.setText("Actions (" + selectedCount + ")");
+                btnMenu.setEnabled(true);
+            } else {
+                btnMenu.setText("Actions");
+                btnMenu.setEnabled(false);
+            }
         } else {
             btnLeft.setText("Left");
             btnMenu.setText("Menu");
+            btnMenu.setEnabled(true);
         }
     }
     
     private void enterMultiSelectMode() {
         isMultiSelectMode = true;
         fileAdapter.setMultiSelectMode(true);
+        selectedFiles = null;
         updateMultiSelectUI(0);
         Toast.makeText(this, FileConstants.MULTI_SELECT_ENTERED, Toast.LENGTH_SHORT).show();
     }
@@ -265,8 +299,18 @@ public class FileBrowserActivity extends AppCompatActivity implements FileOperat
     private void exitMultiSelectMode() {
         isMultiSelectMode = false;
         fileAdapter.setMultiSelectMode(false);
+        selectedFiles = null;
         updateMultiSelectUI(0);
         Toast.makeText(this, FileConstants.MULTI_SELECT_EXITED, Toast.LENGTH_SHORT).show();
+    }
+
+    private void showBulkOperationsMenu() {
+        if (selectedFiles != null && !selectedFiles.isEmpty()) {
+            List<File> filesList = new ArrayList<>(selectedFiles);
+            bulkOperationsManager.showBulkOperationsMenu(filesList);
+        } else {
+            Toast.makeText(this, "No files selected", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private boolean onMenuItemClick(MenuItem item) {
@@ -333,11 +377,29 @@ public class FileBrowserActivity extends AppCompatActivity implements FileOperat
         bottomSheet.show(getSupportFragmentManager(), ControlCenterBottomSheet.TAG);
     }
 
+    private void showFolderPickerDialog(FileOperationHandler.DestinationFolderPicker.DestinationCallback callback) {
+        File currentDir = viewModel.getCurrentDirectory().getValue();
+        if (currentDir == null) {
+            Toast.makeText(this, "No current directory", Toast.LENGTH_SHORT).show();
+            callback.onDestinationChosen(null);
+            return;
+        }
+        FolderPickerDialog dialog = FolderPickerDialog.newInstance(currentDir, folder -> {
+            callback.onDestinationChosen(folder);
+        });
+        dialog.show(getSupportFragmentManager(), "FolderPickerDialog");
+    }
+
     @Override
     public void refresh() {
         File currentDirectory = viewModel.getCurrentDirectory().getValue();
         if (currentDirectory != null) {
             viewModel.loadDirectory(currentDirectory);
+        }
+        
+        // Clear selection after refresh
+        if (isMultiSelectMode) {
+            exitMultiSelectMode();
         }
     }
 }

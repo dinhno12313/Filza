@@ -19,6 +19,19 @@ public class FileOperationHandler implements FileActionListener {
         void refresh();
     }
 
+    public interface DestinationFolderPicker {
+        void pickDestination(File source, DestinationCallback callback);
+        interface DestinationCallback {
+            void onDestinationChosen(File destinationDir);
+        }
+    }
+
+    private DestinationFolderPicker folderPicker;
+
+    public void setDestinationFolderPicker(DestinationFolderPicker picker) {
+        this.folderPicker = picker;
+    }
+
     public FileOperationHandler(Context context, Refreshable reloader) {
         this.context = context;
         this.reloader = reloader;
@@ -60,37 +73,65 @@ public class FileOperationHandler implements FileActionListener {
 
     @Override
     public void onMove(File file) {
-        // TODO: Show a folder picker dialog to let the user select the destination directory.
-        // For now, move to Downloads as a placeholder.
-        File downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
-        File destFile = new File(downloadsDir, file.getName());
-
-        if (file.renameTo(destFile)) {
-            Toast.makeText(context, "Moved to Downloads", Toast.LENGTH_SHORT).show();
-            reloader.refresh();
-        } else {
-            Toast.makeText(context, "Failed to move file", Toast.LENGTH_SHORT).show();
+        if (folderPicker == null) {
+            Toast.makeText(context, "No folder picker set", Toast.LENGTH_SHORT).show();
+            return;
         }
+        folderPicker.pickDestination(file, destDir -> {
+            if (destDir == null) return;
+            File destFile = new File(destDir, file.getName());
+            if (destFile.exists()) {
+                Toast.makeText(context, "A file with this name already exists in destination", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            boolean success = file.renameTo(destFile);
+            if (!success) {
+                // Fallback: copy then delete
+                try {
+                    if (file.isDirectory()) {
+                        copyDirectory(file, destFile);
+                        deleteRecursively(file);
+                    } else {
+                        copyFile(file, destFile);
+                        file.delete();
+                    }
+                    Toast.makeText(context, "Moved (copied+deleted)", Toast.LENGTH_SHORT).show();
+                    reloader.refresh();
+                } catch (Exception e) {
+                    Toast.makeText(context, "Failed to move: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            } else {
+                Toast.makeText(context, "Moved successfully", Toast.LENGTH_SHORT).show();
+                reloader.refresh();
+            }
+        });
     }
 
     @Override
     public void onCopy(File file) {
-        // TODO: Show a folder picker dialog to let the user select the destination directory.
-        // For now, copy to Downloads as a placeholder.
-        File downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
-        File destFile = new File(downloadsDir, file.getName());
-
-        try {
-            if (file.isDirectory()) {
-                copyDirectory(file, destFile);
-            } else {
-                copyFile(file, destFile);
-            }
-            Toast.makeText(context, "Copied to Downloads", Toast.LENGTH_SHORT).show();
-            reloader.refresh();
-        } catch (Exception e) {
-            Toast.makeText(context, "Failed to copy: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        if (folderPicker == null) {
+            Toast.makeText(context, "No folder picker set", Toast.LENGTH_SHORT).show();
+            return;
         }
+        folderPicker.pickDestination(file, destDir -> {
+            if (destDir == null) return;
+            File destFile = new File(destDir, file.getName());
+            if (destFile.exists()) {
+                Toast.makeText(context, "A file with this name already exists in destination", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            try {
+                if (file.isDirectory()) {
+                    copyDirectory(file, destFile);
+                } else {
+                    copyFile(file, destFile);
+                }
+                Toast.makeText(context, "Copied successfully", Toast.LENGTH_SHORT).show();
+                reloader.refresh();
+            } catch (Exception e) {
+                Toast.makeText(context, "Failed to copy: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override

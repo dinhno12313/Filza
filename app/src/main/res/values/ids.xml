@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Bulk Operations Menu Items -->
+    <item name="action_bulk_operations" type="id" />
+    <item name="action_copy" type="id" />
+    <item name="action_move" type="id" />
+    <item name="action_compress" type="id" />
+    <item name="action_delete" type="id" />
+</resources> 
