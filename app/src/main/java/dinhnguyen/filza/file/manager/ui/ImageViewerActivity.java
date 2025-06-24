@@ -99,13 +99,11 @@ public class ImageViewerActivity extends AppCompatActivity implements ColorPicke
             saveImage();
         });
         
-        // Set initial button states
         updateButtonStates();
     }
     
     private void handleModeButtonClick(DrawingImageView.DrawingMode mode) {
         if (currentMode == mode && (mode == DrawingImageView.DrawingMode.DRAW || mode == DrawingImageView.DrawingMode.HIGHLIGHT)) {
-            // If the same mode is clicked and it's draw or highlight, show color picker
             showColorPicker(mode);
         } else {
             // Otherwise, switch to the new mode
@@ -233,8 +231,7 @@ public class ImageViewerActivity extends AppCompatActivity implements ColorPicke
             // Get screen dimensions
             int screenWidth = getResources().getDisplayMetrics().widthPixels;
             int screenHeight = getResources().getDisplayMetrics().heightPixels;
-            
-            // First, decode with inJustDecodeBounds=true to check dimensions
+
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
             BitmapFactory.decodeFile(filePath, options);
@@ -244,8 +241,6 @@ public class ImageViewerActivity extends AppCompatActivity implements ColorPicke
                 return;
             }
 
-            // Calculate inSampleSize to avoid OutOfMemoryError
-            // Use screen dimensions to determine appropriate sample size
             options.inSampleSize = calculateInSampleSize(options, screenWidth, screenHeight);
             options.inJustDecodeBounds = false;
             
@@ -270,9 +265,6 @@ public class ImageViewerActivity extends AppCompatActivity implements ColorPicke
         if (height > reqHeight || width > reqWidth) {
             final int halfHeight = height / 2;
             final int halfWidth = width / 2;
-
-            // Calculate the largest inSampleSize value that is a power of 2 and keeps both
-            // height and width larger than the requested height and width.
             while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
                 inSampleSize *= 2;
             }
@@ -344,8 +336,6 @@ public class ImageViewerActivity extends AppCompatActivity implements ColorPicke
     
     @Override
     public void onBackPressed() {
-        // Check if there are unsaved changes
-        // For now, just finish the activity
         super.onBackPressed();
         finish();
     }
